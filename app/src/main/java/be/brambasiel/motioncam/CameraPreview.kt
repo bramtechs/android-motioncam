@@ -29,6 +29,16 @@ class CameraPreview(
                 setDisplayOrientation(90);
                 setPreviewDisplay(holder)
                 startPreview()
+
+                this.setPreviewCallback { data, cam ->
+                    //val motion = CameraMath.calculateAverage(data)
+                    //Log.d(TAG, "motion $motion")
+                    val motion = CameraMath.isMotion(data, 0.4f)
+                    if (motion) {
+                        Log.d(TAG, "motion")
+                    }
+                }
+
             } catch (e: IOException) {
                 Log.d(TAG, "Error setting camera preview: ${e.message}")
             }
