@@ -11,7 +11,7 @@ import java.io.IOException
 /** A basic Camera preview class */
 class CameraPreview(
     context: Context,
-    private val mCamera: Camera
+    private val camera: Camera,
 ) : SurfaceView(context), SurfaceHolder.Callback {
 
     private val mHolder: SurfaceHolder = holder.apply {
@@ -22,9 +22,14 @@ class CameraPreview(
         setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS)
     }
 
+    private var listeners = emptyArray<CameraListener>()
+
+    private var lastMotionTime = 0L;
+    private var cooldown = 10 * 1000;
+
     override fun surfaceCreated(holder: SurfaceHolder) {
         // The Surface has been created, now tell the camera where to draw the preview.
-        mCamera.apply {
+        camera.apply {
             try {
                 setDisplayOrientation(90);
                 setPreviewDisplay(holder)
@@ -33,9 +38,19 @@ class CameraPreview(
                 this.setPreviewCallback { data, cam ->
                     //val motion = CameraMath.calculateAverage(data)
                     //Log.d(TAG, "motion $motion")
-                    val motion = CameraMath.isMotion(data, 0.4f)
-                    if (motion) {
-                        Log.d(TAG, "motion")
+                    if (CameraMath.isMotion(data, 0.4f)) {
+                        lastMotionTime = System.currentTimeMillis();
+                        for (listener in listeners) {
+                            listener.onMotionDetected();
+                        }
+                    }
+                    // check expiration
+                    if (lastMotionTime >= 0 && System.currentTimeMillis() - lastMotionTime > cooldown) {
+                        lastMotionTime = 0;
+                        for (listener in listeners) {
+                            listener.onMotionExpired();
+                        }
+                        Log.d(TAG, "expired")
                     }
                 }
 
@@ -59,7 +74,7 @@ class CameraPreview(
 
         // stop preview before making changes
         try {
-            mCamera.stopPreview()
+            camera.stopPreview()
         } catch (e: Exception) {
             // ignore: tried to stop a non-existent preview
         }
@@ -68,7 +83,7 @@ class CameraPreview(
         // reformatting changes here
 
         // start preview with new settings
-        mCamera.apply {
+        camera.apply {
             try {
                 setPreviewDisplay(mHolder)
                 startPreview()
@@ -76,5 +91,9 @@ class CameraPreview(
                 Log.d(TAG, "Error starting camera preview: ${e.message}")
             }
         }
+    }
+
+    fun addListener(listener: CameraListener) {
+        listeners += listener
     }
 }

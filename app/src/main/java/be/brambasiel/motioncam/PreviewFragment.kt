@@ -1,13 +1,11 @@
 package be.brambasiel.motioncam
 
-import android.hardware.Camera
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.Toast
 import androidx.navigation.fragment.findNavController
 import be.brambasiel.motioncam.databinding.FragmentPreviewBinding
 import com.google.android.material.snackbar.Snackbar
@@ -15,7 +13,7 @@ import com.google.android.material.snackbar.Snackbar
 /**
  * A simple [Fragment] subclass as the default destination in the navigation.
  */
-class PreviewFragment : Fragment() {
+class PreviewFragment : Fragment(), CameraListener {
 
     private var _binding: FragmentPreviewBinding? = null
 
@@ -27,11 +25,16 @@ class PreviewFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-
-
         _binding = FragmentPreviewBinding.inflate(inflater, container, false)
         return binding.root
+    }
 
+    override fun onMotionDetected() {
+        binding.motionLabel.visibility = View.VISIBLE;
+    }
+
+    override fun onMotionExpired() {
+        binding.motionLabel.visibility = View.INVISIBLE;
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -39,10 +42,14 @@ class PreviewFragment : Fragment() {
 
         // Create an instance of Camera
         val camera = CameraUtils.getCameraInstance()
-        val preview = camera?.let { CameraPreview(activity!!, it) }
+        val preview = camera?.let {
+            val cam = CameraPreview(activity!!, it)
+            cam.addListener(this);
+            cam
+        }
 
         // Set the Preview view as the content of our activity.
-        preview?.also {
+        preview?.let {
             val frame: FrameLayout = binding.cameraFrame
             frame.addView(it)
         }
@@ -61,6 +68,8 @@ class PreviewFragment : Fragment() {
                     .setAction("Action", null).show()
             }
         }
+
+        binding.motionLabel.visibility = View.INVISIBLE;
     }
 
     override fun onDestroyView() {
